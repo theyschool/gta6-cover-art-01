@@ -1,59 +1,279 @@
+/* Vice Cover — the editor's look: a dark stage, a neon-sunset accent, and the
+   same condensed-black display face the covers are lettered in. */
+
 @font-face {
   font-family: "Vice Display";
-  src: url("./fonts/vice-display.woff2") format("woff2");
+  src: url("fonts/vice-display.woff2") format("woff2");
   font-weight: 900;
   font-style: normal;
   font-display: swap;
 }
 
+:root {
+  --bg: #12082a;
+  --panel: #1d1038;
+  --panel-2: #26154a;
+  --ink: #f5eefc;
+  --muted: #b9a8d6;
+  --accent: #ff2e88;
+  --accent-2: #ffb347;
+  --line: #3a2364;
+  --good: #8ef6ff;
+}
+
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; background: #14082a; color: #f5eefc; font: 15px/1.45 system-ui, sans-serif; }
-.app { display: flex; gap: 28px; align-items: flex-start; justify-content: center; padding: 24px; min-height: 100vh; }
-.controls { display: flex; flex-direction: column; gap: 16px; width: 340px; flex: none; }
-.controls h1 {
-  margin: 0; font-family: "Vice Display", "Arial Narrow", sans-serif; font-weight: 900;
-  font-size: 44px; letter-spacing: 1px; line-height: 0.95; color: #fff;
-  text-shadow: 0 0 18px rgba(255, 46, 136, 0.8), 0 3px 0 #ff7a3d;
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
-.lede { margin: 0; color: #cbb8e8; }
-fieldset { border: 1px solid #4a2a72; border-radius: 10px; padding: 14px; margin: 0; background: #1d0f38; }
-legend { font-weight: 800; color: #ffd76a; padding: 0 6px; }
-.hint { margin: 0 0 8px; color: #a98fc9; font-size: 13px; }
-.fine { margin: 0; color: #8d76ad; font-size: 12px; }
-label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; margin-bottom: 10px; }
-label:last-child { margin-bottom: 0; }
-input[type=text], select {
-  font: inherit; color: #f5eefc; background: #2a1650; padding: 9px 10px;
-  border: 1px solid #6b4a9e; border-radius: 6px;
+
+.top {
+  padding: 28px 24px 8px;
+  text-align: center;
 }
-input[type=file] { font: inherit; font-size: 13px; color: #cbb8e8; }
-input[type=range] { width: 100%; accent-color: #ff2e88; }
-button {
-  font: inherit; font-weight: 700; padding: 10px 12px; border-radius: 8px;
-  background: #2a1650; color: #fff; border: 1px solid #6b4a9e; cursor: pointer;
+
+.top h1 {
+  margin: 0;
+  font-family: "Vice Display", "Arial Narrow", sans-serif;
+  font-weight: 900;
+  font-size: clamp(44px, 7vw, 84px);
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #fff 15%, #ffd76a 55%, #ff2e88 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 32px rgba(255, 46, 136, 0.35);
 }
-button:hover { border-color: #ff2e88; }
-button.primary { background: linear-gradient(90deg, #ff2e88, #ff7a3d); border: 0; font-size: 17px; padding: 12px; }
-button.mini { padding: 6px 9px; font-size: 13px; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; }
-.row .mini { flex: 1; }
-.layouts, .sizes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-.sizes { flex-direction: row; flex-wrap: wrap; }
-.layout-btn, .size-btn { text-align: left; }
-.layout-btn.active, .size-btn.active { background: #ff2e88; border-color: #ff2e88; }
-.photo-row { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: end; margin-bottom: 12px; }
-.photo-row label { margin: 0; }
-.file-name { grid-column: 1 / -1; color: #a98fc9; font-size: 12px; }
-#status { margin: 8px 0 0; color: #8ef6ff; min-height: 1.2em; }
-.preview { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; position: sticky; top: 24px; }
-#cover { max-width: 100%; max-height: calc(100vh - 48px); box-shadow: 0 12px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.15); cursor: grab; touch-action: none; }
-#cover:active { cursor: grabbing; }
-body.shot-cover .controls { display: none; }
-body.shot-cover .app { padding: 0; }
-body.shot-cover .preview { position: static; }
-body.shot-cover #cover { width: 100vw; height: 100vh; max-width: none; max-height: none; box-shadow: none; object-fit: fill; cursor: default; }
-@media (max-width: 900px) {
-  .app { flex-direction: column; align-items: stretch; }
-  .controls { width: auto; }
-  .preview { position: static; }
+
+.top .tag {
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
+.editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 20px 24px 8px;
+  align-items: flex-start;
+}
+
+.preview-col {
+  flex: 1 1 560px;
+  min-width: 320px;
+}
+
+.preview-wrap {
+  background: #0a0418;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  justify-content: center;
+}
+
+#preview {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  cursor: grab;
+  touch-action: none;
+}
+
+#preview:active { cursor: grabbing; }
+
+.panel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+  color: var(--muted);
+}
+
+#panelLabel { font-weight: 600; color: var(--ink); }
+
+.zoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.zoom input { width: 140px; accent-color: var(--accent); }
+
+.hint {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 10px 0 0;
+}
+
+.controls {
+  flex: 1 1 340px;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.controls section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.controls h2 {
+  margin: 0 0 12px;
+  font-family: "Vice Display", "Arial Narrow", sans-serif;
+  font-size: 21px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pick,
+#exportBtns button,
+.actions button,
+.photo-slot button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.pick:hover,
+#exportBtns button:hover,
+.actions button:hover,
+.photo-slot button:hover {
+  border-color: var(--accent);
+}
+
+.pick.on,
+#exportBtns button:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.photo-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.slot-name { font-weight: 600; min-width: 64px; }
+
+.file-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.file-btn input { display: none; }
+
+.field {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.field input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: #0a0418;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actions button {
+  text-align: left;
+}
+
+#shuffleBtn {
+  background: linear-gradient(90deg, #ff2e88, #ff7a3d);
+  border: none;
+  color: #fff;
+  font-weight: 700;
+}
+
+.foot {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 12px 24px 28px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Shot mode: a cover fills the window, the editor is hidden. */
+body.shot-cover .top,
+body.shot-cover .editor,
+body.shot-cover .foot {
+  display: none;
+}
+
+body.shot-cover {
+  margin: 0;
+  background: #0a0418;
+  overflow: hidden;
+}
+
+#coverStage {
+  display: none;
+}
+
+body.shot-cover #coverStage {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+body.shot-cover #coverStage canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  object-fit: contain;
+}
+
+@media (max-width: 720px) {
+  .editor { padding: 12px; }
+  .panel-row { flex-direction: column; align-items: flex-start; }
 }

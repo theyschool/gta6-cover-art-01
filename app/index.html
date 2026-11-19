@@ -3,93 +3,109 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vice Cover — GTA-style cover art maker</title>
-<link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./style.css">
+<title>Vice Cover — turn your photos into GTA 6-style cover art</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main class="app">
-  <section class="controls" aria-label="Cover editor">
-    <h1>Vice Cover</h1>
-    <p class="lede">Your photo, Vice City style. Three steps to a poster: add photos, arrange the panels, export the PNG.</p>
+<header class="top">
+  <h1>Vice Cover</h1>
+  <p class="tag">Turn your photos into GTA 6-style cover art, offline in the browser.</p>
+</header>
 
-    <fieldset>
-      <legend>1 · Photos</legend>
+<main class="editor">
+  <section class="preview-col">
+    <div class="preview-wrap">
+      <canvas id="preview" width="640" height="640" aria-label="Cover preview"></canvas>
+    </div>
+    <div class="panel-row">
+      <span id="panelLabel">Panel 1 · Hero</span>
+      <label class="zoom">Zoom
+        <input id="zoomRange" type="range" min="1" max="3" step="0.05" value="1">
+      </label>
+    </div>
+    <p class="hint">Click a panel to select it. Drag the photo to move it, use the arrow
+      keys to nudge it, and the zoom slider to crop it.</p>
+  </section>
+
+  <aside class="controls">
+    <section>
+      <h2>Photos</h2>
+      <div class="photo-slot">
+        <span class="slot-name">Photo 1</span>
+        <label class="file-btn">Upload a photo
+          <input type="file" accept="image/*">
+        </label>
+        <button type="button" data-sample="0" data-slot="0">Use Boulevard</button>
+      </div>
+      <div class="photo-slot">
+        <span class="slot-name">Photo 2</span>
+        <label class="file-btn">Upload a photo
+          <input type="file" accept="image/*">
+        </label>
+        <button type="button" data-sample="1" data-slot="1">Use Pier</button>
+      </div>
+      <div class="photo-slot">
+        <span class="slot-name">Photo 3</span>
+        <label class="file-btn">Upload a photo
+          <input type="file" accept="image/*">
+        </label>
+        <button type="button" data-sample="0" data-slot="2">Use Boulevard</button>
+      </div>
       <p class="hint">Photos stay on your machine — nothing is uploaded.</p>
-      <div class="photo-row">
-        <label>Photo 1 <input id="photo-1" type="file" accept="image/*"></label>
-        <button id="sample-1" type="button" class="mini">Use sample</button>
-        <span id="photo-1-name" class="file-name">No photo yet</span>
-      </div>
-      <div class="photo-row">
-        <label>Photo 2 <input id="photo-2" type="file" accept="image/*"></label>
-        <button id="sample-2" type="button" class="mini">Use sample</button>
-        <span id="photo-2-name" class="file-name">No photo yet</span>
-      </div>
-      <div class="photo-row">
-        <label>Photo 3 <input id="photo-3" type="file" accept="image/*"></label>
-        <button id="sample-3" type="button" class="mini">Use sample</button>
-        <span id="photo-3-name" class="file-name">No photo yet</span>
-      </div>
-    </fieldset>
+    </section>
 
-    <fieldset>
-      <legend>2 · Panels &amp; grade</legend>
-      <div id="layouts" class="layouts" role="group" aria-label="Panel layout"></div>
-      <label>Colour grade
-        <select id="grade"></select>
+    <section>
+      <h2>Layout</h2>
+      <div id="layoutPicker" class="picker"></div>
+    </section>
+
+    <section>
+      <h2>Colour grade</h2>
+      <div id="gradePicker" class="picker"></div>
+    </section>
+
+    <section>
+      <h2>Caption style</h2>
+      <div id="stylePicker" class="picker"></div>
+    </section>
+
+    <section>
+      <h2>Caption</h2>
+      <label class="field">Caption
+        <input id="captionInput" type="text" value="Sunset Heist" maxlength="48">
       </label>
-      <button id="shuffle" type="button" class="mini">Shuffle the look</button>
-      <label>Panel
-        <select id="panel"></select>
+      <label class="field">Tagline
+        <input id="taglineInput" type="text" value="VICE CITY" maxlength="32">
       </label>
-      <label>Fill this panel with
-        <select id="panel-photo">
-          <option value="-1">Sunset art (no photo)</option>
-          <option value="0">Photo 1</option>
-          <option value="1">Photo 2</option>
-          <option value="2">Photo 3</option>
-        </select>
-      </label>
-      <label>Zoom <span id="zoom-value">100%</span>
-        <input id="zoom" type="range" min="1" max="2.5" step="0.05" value="1">
-      </label>
-      <label>Move left / right
-        <input id="pan-x" type="range" min="-1" max="1" step="0.05" value="0">
-      </label>
-      <label>Move up / down
-        <input id="pan-y" type="range" min="-1" max="1" step="0.05" value="0">
-      </label>
-      <p id="panel-note" class="hint"></p>
-      <div class="row">
-        <button id="fill-all" type="button" class="mini">Fill every panel with one photo</button>
-        <button id="reset-framing" type="button" class="mini">Reset framing</button>
+    </section>
+
+    <section class="actions">
+      <button id="shuffleBtn" type="button">Shuffle the look</button>
+      <button id="fillAllBtn" type="button">Fill all panels with this photo</button>
+      <button id="resetBtn" type="button">Reset framing</button>
+    </section>
+
+    <section>
+      <h2>Export PNG</h2>
+      <div id="exportBtns" class="picker">
+        <button type="button" data-size="0">1080 × 1080</button>
+        <button type="button" data-size="1">1080 × 1350</button>
+        <button type="button" data-size="2">1920 × 1080</button>
       </div>
-      <p class="hint">Tip: drag a photo on the preview to move it, click a panel to pick it, arrow keys nudge it.</p>
-    </fieldset>
-
-    <fieldset>
-      <legend>3 · Words</legend>
-      <label>Caption <input id="caption" type="text" maxlength="40" value="Sunset Heist"></label>
-      <label>Tagline <input id="tagline" type="text" maxlength="24" value="Vice City"></label>
-      <label>Caption style
-        <select id="caption-style"></select>
-      </label>
-    </fieldset>
-
-    <fieldset>
-      <legend>4 · Export</legend>
-      <div id="sizes" class="sizes" role="group" aria-label="Export size"></div>
-      <button id="export" type="button" class="primary">Export PNG</button>
-      <button id="export-all" type="button">Export all three sizes</button>
-      <p id="status" role="status"></p>
-    </fieldset>
-    <p class="fine">Original art made in your browser. No Rockstar logo, artwork or font — the lettering is Noto Sans Display (SIL OFL), bundled under app/fonts.</p>
-  </section>
-  <section class="preview" aria-label="Live preview">
-    <canvas id="cover" width="1080" height="1080" aria-label="The cover preview"></canvas>
-  </section>
+      <p class="hint">The file downloads as a PNG, named after your caption.</p>
+    </section>
+  </aside>
 </main>
-<script type="module" src="./src/main.js"></script>
+
+<div id="coverStage" aria-hidden="true"></div>
+
+<footer class="foot">
+  <p>Vice Cover — an offline cover maker. All art is original and drawn in code;
+    the display face is Noto Sans Display ExtraCondensed Black (SIL Open Font
+    License). No Rockstar Games logo, artwork or font.</p>
+</footer>
+
+<script type="module" src="src/main.js"></script>
 </body>
 </html>
