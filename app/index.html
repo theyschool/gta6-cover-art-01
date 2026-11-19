@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vice Cover — GTA-style cover art maker</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="app">
+  <section class="controls" aria-label="Cover editor">
+    <h1>Vice Cover</h1>
+    <p class="lede">Your photo, Vice City style. Three steps to a poster: add photos, arrange the panels, export the PNG.</p>
+
+    <fieldset>
+      <legend>1 · Photos</legend>
+      <p class="hint">Photos stay on your machine — nothing is uploaded.</p>
+      <div class="photo-row">
+        <label>Photo 1 <input id="photo-1" type="file" accept="image/*"></label>
+        <button id="sample-1" type="button" class="mini">Use sample</button>
+        <span id="photo-1-name" class="file-name">No photo yet</span>
+      </div>
+      <div class="photo-row">
+        <label>Photo 2 <input id="photo-2" type="file" accept="image/*"></label>
+        <button id="sample-2" type="button" class="mini">Use sample</button>
+        <span id="photo-2-name" class="file-name">No photo yet</span>
+      </div>
+      <div class="photo-row">
+        <label>Photo 3 <input id="photo-3" type="file" accept="image/*"></label>
+        <button id="sample-3" type="button" class="mini">Use sample</button>
+        <span id="photo-3-name" class="file-name">No photo yet</span>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>2 · Panels &amp; grade</legend>
+      <div id="layouts" class="layouts" role="group" aria-label="Panel layout"></div>
+      <label>Colour grade
+        <select id="grade"></select>
+      </label>
+      <label>Panel
+        <select id="panel"></select>
+      </label>
+      <label>Fill this panel with
+        <select id="panel-photo">
+          <option value="-1">Sunset art (no photo)</option>
+          <option value="0">Photo 1</option>
+          <option value="1">Photo 2</option>
+          <option value="2">Photo 3</option>
+        </select>
+      </label>
+      <label>Zoom <span id="zoom-value">100%</span>
+        <input id="zoom" type="range" min="1" max="2.5" step="0.05" value="1">
+      </label>
+      <label>Move left / right
+        <input id="pan-x" type="range" min="-1" max="1" step="0.05" value="0">
+      </label>
+      <label>Move up / down
+        <input id="pan-y" type="range" min="-1" max="1" step="0.05" value="0">
+      </label>
+      <p id="panel-note" class="hint"></p>
+      <button id="fill-all" type="button" class="mini">Fill every panel with one photo</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>3 · Words</legend>
+      <label>Caption <input id="caption" type="text" maxlength="40" value="Sunset Heist"></label>
+      <label>Tagline <input id="tagline" type="text" maxlength="24" value="Vice City"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>4 · Export</legend>
+      <div id="sizes" class="sizes" role="group" aria-label="Export size"></div>
+      <button id="export" type="button" class="primary">Export PNG</button>
+      <button id="export-all" type="button">Export all three sizes</button>
+      <p id="status" role="status"></p>
+    </fieldset>
+    <p class="fine">Original art made in your browser. No Rockstar logo, artwork or font — the lettering is Noto Sans Display (SIL OFL), bundled under app/fonts.</p>
+  </section>
+  <section class="preview" aria-label="Live preview">
+    <canvas id="cover" width="1080" height="1080" aria-label="The cover preview"></canvas>
+  </section>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
