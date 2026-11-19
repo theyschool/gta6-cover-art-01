@@ -1,7 +1,9 @@
 // Vice Cover — wires the editor: photos in, panels arranged, caption typed,
-// PNG out in the three post sizes. A `?shot=` query sets up a fixed scene for
-// a screenshot instead (./shots.js). Photos never leave the machine.
-import { GRADES, LAYOUTS, defaultState, exportCover, layoutPanels, renderCover } from './cover.js';
+// PNG out in the three post sizes. Drag a photo on the preview to move it,
+// click a panel to pick it, shuffle for a fresh look. A `?shot=` query sets
+// up a fixed scene for a screenshot instead (./shots.js). Photos never leave
+// the machine.
+import { GRADES, LAYOUTS, CAPTION_STYLES, coverFitRect, defaultState, exportCover, layoutPanels, renderCover } from './cover.js';
 import { runShot } from './shots.js';
 
 /** The three post sizes the app exports. */
@@ -59,7 +61,7 @@ export function refreshPanelControls() {
   document.getElementById('panel-note').textContent =
     panel.photo < 0
       ? 'No photo: this panel shows sunset art (sun, skyline, palms).'
-      : `Photo ${panel.photo + 1} in this panel — zoom and drag it into place.`;
+      : `Photo ${panel.photo + 1} in this panel — drag it on the preview, or use zoom and the sliders.`;
 }
 
 /** Sets a photo slot from a File, then redraws. */
@@ -77,6 +79,12 @@ export async function setSampleSlot(slot, sample) {
   redraw();
 }
 
+/** Turns the caption into a file-name slug: "Sunset Heist" -> "sunset-heist". */
+export function slugify(text) {
+  const slug = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug || 'vice-cover';
+}
+
 /** Renders the cover at w x h and downloads it as a PNG. */
 export function downloadCover(w, h) {
   const out = exportCover(state, w, h);
@@ -84,9 +92,9 @@ export function downloadCover(w, h) {
     out.toBlob((blob) => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `vice-cover-${w}x${h}.png`;
+      a.download = `vice-cover-${slugify(state.caption)}-${w}x${h}.png`;
       a.click();
-      status.textContent = `Saved vice-cover-${w}x${h}.png`;
+      status.textContent = `Saved vice-cover-${slugify(state.caption)}-${w}x${h}.png`;
       resolve(blob);
     }, 'image/png');
   });
@@ -96,6 +104,102 @@ export function downloadCover(w, h) {
 export function exportPNGDataURL(w, h) {
   return exportCover(state, w, h).toDataURL('image/png');
 }
+
+/** Picks a fresh look: layout, grade, caption style and panel photos. */
+export function shuffleLook() {
+  const layoutKeys = Object.keys(LAYOUTS);
+  const gradeKeys = Object.keys(GRADES);
+  const styleKeys = Object.keys(CAPTION_STYLES);
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  state.layout = pick(layoutKeys);
+  state.grade = pick(gradeKeys);
+  state.style = pick(styleKeys);
+  const loaded = state.photos.map((p, i) => (p ? i : -1)).filter((i) => i >= 0);
+  const panels = layoutPanels(state, 1, 1);
+  panels.forEach((_, i) => {
+    state.panels[i].photo = loaded.length ? loaded[Math.floor(Math.random() * loaded.length)] : -1;
+    state.panels[i].zoom = 1;
+    state.panels[i].x = 0;
+    state.panels[i].y = 0;
+  });
+  selectedPanel = 0;
+  document.getElementById('grade').value = state.grade;
+  document.getElementById('caption-style').value = state.style;
+  document.querySelectorAll('.layout-btn').forEach((b) =>
+    b.classList.toggle('active', b.dataset.layout === state.layout));
+  status.textContent = `Shuffled: ${LAYOUTS[state.layout].name} · ${GRADES[state.grade].name} · ${CAPTION_STYLES[state.style].name}.`;
+  redraw();
+}
+
+/** Resets the selected panel's framing: zoom 1, centred. */
+export function resetFraming() {
+  const panel = state.panels[selectedPanel];
+  panel.zoom = 1;
+  panel.x = 0;
+  panel.y = 0;
+  status.textContent = 'Framing reset for this panel.';
+  redraw();
+}
+
+/** Which panel (if any) holds the point px,py in canvas pixels. */
+export function panelAt(px, py) {
+  const panels = layoutPanels(state, canvas.width, canvas.height);
+  for (let i = panels.length - 1; i >= 0; i--) {
+    const r = panels[i];
+    if (px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h) return i;
+  }
+  return -1;
+}
+
+// Drag a photo on the preview: pointer down starts a drag on the panel under
+// the cursor, moving the pointer pans that panel's photo; a plain click
+// (no real movement) just selects the panel instead.
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const px = ((e.clientX - rect.left) / rect.width) * canvas.width;
+  const py = ((e.clientY - rect.top) / rect.height) * canvas.height;
+  const hit = panelAt(px, py);
+  if (hit < 0) return;
+  selectedPanel = hit;
+  const panel = state.panels[hit];
+  const photo = panel.photo >= 0 ? state.photos[panel.photo] : null;
+  drag = { x: px, y: py, moved: false, panel, photo, rect: layoutPanels(state, canvas.width, canvas.height)[hit] };
+  canvas.setPointerCapture(e.pointerId);
+  refreshPanelControls();
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  const rect = canvas.getBoundingClientRect();
+  const px = ((e.clientX - rect.left) / rect.width) * canvas.width;
+  const py = ((e.clientY - rect.top) / rect.height) * canvas.height;
+  const dx = px - drag.x;
+  const dy = py - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+  if (!drag.moved || !drag.photo) return;
+  const fit = coverFitRect(drag.photo.naturalWidth, drag.photo.naturalHeight, drag.rect, drag.panel.zoom, 0, 0);
+  const ox = Math.max(1, (fit.w - drag.rect.w) / 2);
+  const oy = Math.max(1, (fit.h - drag.rect.h) / 2);
+  drag.panel.x = Math.max(-1, Math.min(1, drag.panel.x + dx / ox));
+  drag.panel.y = Math.max(-1, Math.min(1, drag.panel.y + dy / oy));
+  drag.x = px;
+  drag.y = py;
+  redraw();
+});
+canvas.addEventListener('pointerup', () => { drag = null; });
+canvas.addEventListener('pointercancel', () => { drag = null; });
+
+// Arrow keys nudge the selected panel's photo a little.
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input, select, textarea')) return;
+  const panel = state.panels[selectedPanel];
+  if (panel.photo < 0) return;
+  const step = 0.08;
+  if (e.key === 'ArrowLeft') { panel.x = Math.max(-1, panel.x - step); redraw(); }
+  if (e.key === 'ArrowRight') { panel.x = Math.min(1, panel.x + step); redraw(); }
+  if (e.key === 'ArrowUp') { panel.y = Math.max(-1, panel.y - step); redraw(); }
+  if (e.key === 'ArrowDown') { panel.y = Math.min(1, panel.y + step); redraw(); }
+});
 
 // Photo slots: file picker + sample button each.
 for (let slot = 0; slot < 3; slot++) {
@@ -143,6 +247,20 @@ gradeSelect.addEventListener('change', () => {
   redraw();
 });
 
+// Caption style picker.
+const styleSelect = document.getElementById('caption-style');
+for (const [key, def] of Object.entries(CAPTION_STYLES)) {
+  const option = document.createElement('option');
+  option.value = key;
+  option.textContent = `${def.name} — ${def.blurb}`;
+  styleSelect.appendChild(option);
+}
+styleSelect.value = state.style;
+styleSelect.addEventListener('change', () => {
+  state.style = styleSelect.value;
+  redraw();
+});
+
 // Caption + tagline.
 captionInput.addEventListener('input', () => { state.caption = captionInput.value; redraw(); });
 taglineInput.addEventListener('input', () => { state.tagline = taglineInput.value; redraw(); });
@@ -175,6 +293,8 @@ document.getElementById('fill-all').addEventListener('click', () => {
   status.textContent = `Every panel now shows Photo ${photo + 1}.`;
   redraw();
 });
+document.getElementById('reset-framing').addEventListener('click', resetFraming);
+document.getElementById('shuffle').addEventListener('click', shuffleLook);
 
 // Export size picker + export buttons.
 const sizeBox = document.getElementById('sizes');

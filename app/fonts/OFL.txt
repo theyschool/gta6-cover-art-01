@@ -1,3 +1,8 @@
+Noto Sans Display — Condensed Black (vice-display.woff2)
+A subset of Noto Sans Display (Copyright 2022 The Noto Project Authors),
+bundled with Vice Cover under the SIL Open Font License, Version 1.1.
+The full license text follows.
+
 SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
 
 PREAMBLE

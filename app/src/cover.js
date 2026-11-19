@@ -1,6 +1,12 @@
-// Vice Cover — the cover renderer. Draws a multi-panel GTA-style poster
-// (original art only: no Rockstar logo, artwork, character or font) from the
-// user's photos, a caption and a colour grade, onto any canvas at any size.
+// Vice Cover — the cover renderer, revised. Draws a multi-panel GTA-style
+// poster (original art only: no Rockstar logo, artwork, character or font)
+// from the user's photos, a caption, a colour grade and a caption style,
+// onto any canvas at any size.
+//
+// The renderer is pure drawing: given a state and a canvas it paints the
+// poster. The editor (main.js) owns the state and the controls; the shot
+// scenes (shots.js) drive it with fixed queries. Nothing here touches the
+// network or the DOM beyond the canvas it is handed.
 
 /** Colour grades: a Vice City neon-sunset palette each. */
 export const GRADES = {
@@ -40,6 +46,22 @@ export const GRADES = {
     captionTop: '#ffffff',
     captionBottom: '#ff9db1',
   },
+  ocean: {
+    name: 'Ocean Drive',
+    sky: ['#04202e', '#0e7490', '#ff8a5c'],
+    wash: 'rgba(14, 116, 144, 0.22)',
+    deep: '#03202e',
+    glow: '#22d3ee',
+    captionTop: '#ffffff',
+    captionBottom: '#a5f3fc',
+  },
+};
+
+/** Caption styles: how the big lettering is set over the foot of the cover. */
+export const CAPTION_STYLES = {
+  neon: { name: 'Neon glow', blurb: 'Gradient letters with a neon halo' },
+  block: { name: 'Solid block', blurb: 'Letters on a solid band with a bright rule' },
+  outline: { name: 'Outline', blurb: 'Hollow letters, no fill' },
 };
 
 /** Panel layouts. Each returns panels as { id, name, x, y, w, h } in 0..1. */
@@ -48,7 +70,6 @@ export const LAYOUTS = {
     name: 'Vice Grid',
     blurb: 'Big hero on top, two panels below',
     panels() {
-      // All values are 0..1 fractions of the cover (layoutPanels scales them).
       const hero = 0.60;
       return [
         { id: 'hero', name: 'Hero', x: 0, y: 0, w: 1, h: hero },
@@ -79,13 +100,26 @@ export const LAYOUTS = {
       ];
     },
   },
+  four: {
+    name: 'Four Corners',
+    blurb: 'Four panels, a mosaic poster',
+    panels() {
+      return [
+        { id: 'top-left', name: 'Top left', x: 0, y: 0, w: 0.5, h: 0.5 },
+        { id: 'top-right', name: 'Top right', x: 0.5, y: 0, w: 0.5, h: 0.5 },
+        { id: 'bottom-left', name: 'Bottom left', x: 0, y: 0.5, w: 0.5, h: 0.5 },
+        { id: 'bottom-right', name: 'Bottom right', x: 0.5, y: 0.5, w: 0.5, h: 0.5 },
+      ];
+    },
+  },
 };
 
-/** A fresh default state: three photo slots, one panel per layout slot. */
+/** A fresh default state: three photo slots, one panel entry per layout slot. */
 export function defaultState() {
   return {
     layout: 'grid',
     grade: 'sunset',
+    style: 'neon',
     caption: 'Sunset Heist',
     tagline: 'VICE CITY',
     photos: [null, null, null],
@@ -93,6 +127,7 @@ export function defaultState() {
       { photo: 0, zoom: 1, x: 0, y: 0 },
       { photo: 0, zoom: 1, x: 0, y: 0 },
       { photo: 1, zoom: 1, x: 0, y: 0 },
+      { photo: -1, zoom: 1, x: 0, y: 0 },
     ],
   };
 }
@@ -100,7 +135,7 @@ export function defaultState() {
 /** Panels for the state's layout, in absolute pixels for a w x h cover. */
 export function layoutPanels(state, w, h) {
   const def = LAYOUTS[state.layout] ?? LAYOUTS.grid;
-  return def.panels(w, h).map((p, i) => ({
+  return def.panels().map((p, i) => ({
     ...p,
     x: p.x * w,
     y: p.y * h,
@@ -110,7 +145,12 @@ export function layoutPanels(state, w, h) {
   }));
 }
 
-function coverFitRect(imgW, imgH, rect, zoom, px, py) {
+/**
+ * Where a photo lands inside its panel: cover-fit at `zoom`, shifted by
+ * `px`/`py` (-1..1) of the overflow. Exported so the editor can turn a
+ * pointer drag into the same pan units.
+ */
+export function coverFitRect(imgW, imgH, rect, zoom, px, py) {
   const base = Math.max(rect.w / imgW, rect.h / imgH) * zoom;
   const pw = imgW * base;
   const ph = imgH * base;
@@ -163,16 +203,52 @@ export function drawSun(ctx, cx, cy, r, grade) {
   ctx.restore();
 }
 
-/** A low skyline silhouette with a few lit windows. */
+/** A few stars scattered over the upper sky, placed by a fixed seed. */
+export function drawStars(ctx, rect, seed) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  for (let i = 0; i < 14; i++) {
+    const sx = rect.x + rect.w * (((seed * 37 + i * 53) % 100) / 100);
+    const sy = rect.y + rect.h * 0.42 * (((seed * 17 + i * 29) % 100) / 100);
+    const sr = Math.max(1, rect.w * 0.0016 * (1 + ((i * 7) % 3) * 0.5));
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Two or three distant birds: small paired arcs crossing the sky. */
+export function drawBirds(ctx, rect, seed) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(20, 6, 40, 0.75)';
+  ctx.lineWidth = Math.max(1.5, rect.w * 0.004);
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const bx = rect.x + rect.w * (0.18 + ((seed + i * 31) % 50) / 100);
+    const by = rect.y + rect.h * (0.14 + ((seed + i * 13) % 22) / 100);
+    const s = rect.w * (0.018 + (i % 2) * 0.006);
+    ctx.beginPath();
+    ctx.moveTo(bx - s, by);
+    ctx.quadraticCurveTo(bx - s * 0.4, by - s * 0.7, bx, by);
+    ctx.quadraticCurveTo(bx + s * 0.4, by - s * 0.7, bx + s, by);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** A low skyline silhouette with lit windows and one beacon tower. */
 export function drawSkyline(ctx, x, y, w, h, color, seed) {
   ctx.save();
   ctx.fillStyle = color;
   let bx = x;
   let i = 0;
+  let tallest = { x: 0, top: y + h, w: 0 };
   while (bx < x + w) {
     const bw = w * (0.08 + ((seed * (i + 3)) % 7) / 70);
     const bh = h * (0.35 + ((seed * (i + 5)) % 10) / 16);
     ctx.fillRect(bx, y + h - bh, bw, bh);
+    if (bh > y + h - tallest.top) tallest = { x: bx, top: y + h - bh, w: bw };
     ctx.fillStyle = 'rgba(255, 220, 120, 0.85)';
     const wins = Math.floor(bh / (h * 0.09));
     for (let k = 0; k < wins; k++) {
@@ -184,6 +260,17 @@ export function drawSkyline(ctx, x, y, w, h, color, seed) {
     bx += bw + w * 0.015;
     i++;
   }
+  // Beacon on the tallest tower: antenna + a glowing dot.
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(2, w * 0.006);
+  ctx.beginPath();
+  ctx.moveTo(tallest.x + tallest.w / 2, tallest.top);
+  ctx.lineTo(tallest.x + tallest.w / 2, tallest.top - h * 0.22);
+  ctx.stroke();
+  ctx.fillStyle = '#ff5e62';
+  ctx.beginPath();
+  ctx.arc(tallest.x + tallest.w / 2, tallest.top - h * 0.24, Math.max(2, w * 0.008), 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -217,7 +304,22 @@ export function drawPalm(ctx, x, y, s, color) {
   ctx.restore();
 }
 
-/** An art panel with no photo: sunset sky, striped sun, skyline, palms. */
+/** Shimmering light streaks on the water under the sun. */
+export function drawReflection(ctx, rect, grade, seed) {
+  ctx.save();
+  const baseY = rect.y + rect.h * 0.62;
+  for (let i = 0; i < 6; i++) {
+    const rw = rect.w * (0.34 - i * 0.035);
+    const rh = Math.max(2, rect.h * 0.012);
+    const rx = rect.x + (rect.w - rw) / 2 + (((seed + i * 11) % 7) - 3) * rect.w * 0.01;
+    const ry = baseY + i * rect.h * 0.055;
+    ctx.fillStyle = `rgba(255, 190, 110, ${0.5 - i * 0.06})`;
+    ctx.fillRect(rx, ry, rw, rh);
+  }
+  ctx.restore();
+}
+
+/** An art panel with no photo: sunset sky, stars, striped sun, skyline, palms. */
 export function drawArtPanel(ctx, rect, grade, seed) {
   ctx.save();
   ctx.beginPath();
@@ -229,7 +331,10 @@ export function drawArtPanel(ctx, rect, grade, seed) {
   sky.addColorStop(1, grade.sky[2]);
   ctx.fillStyle = sky;
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  drawStars(ctx, rect, seed);
+  drawBirds(ctx, rect, seed);
   drawSun(ctx, rect.x + rect.w * 0.5, rect.y + rect.h * 0.42, Math.min(rect.w, rect.h) * 0.26, grade);
+  drawReflection(ctx, rect, grade, seed);
   drawSkyline(ctx, rect.x, rect.y + rect.h * 0.62, rect.w, rect.h * 0.38, grade.deep, seed);
   drawPalm(ctx, rect.x + rect.w * 0.10, rect.y + rect.h, Math.min(rect.w, rect.h) * 0.34, grade.deep);
   drawPalm(ctx, rect.x + rect.w * 0.92, rect.y + rect.h, Math.min(rect.w, rect.h) * 0.26, grade.deep);
@@ -254,18 +359,14 @@ export function wrapCaption(ctx, text, maxWidth) {
   return lines.slice(0, 2);
 }
 
-/** Draws the tagline and the big bold caption across the foot of the cover. */
-export function drawCaption(ctx, w, h, caption, tagline, grade) {
+/**
+ * Draws the tagline and the big bold caption across the foot of the cover.
+ * `style` picks the lettering treatment: neon glow, a solid band, or hollow
+ * outline letters. The tagline always sits above the caption, letterspaced.
+ */
+export function drawCaption(ctx, w, h, caption, tagline, grade, style = 'neon') {
   const text = caption.trim();
   if (!text && !tagline.trim()) return;
-  const bandH = h * 0.30;
-  const bandY = h - bandH;
-  const scrim = ctx.createLinearGradient(0, bandY - h * 0.06, 0, h);
-  scrim.addColorStop(0, 'rgba(16, 4, 32, 0)');
-  scrim.addColorStop(0.45, 'rgba(16, 4, 32, 0.55)');
-  scrim.addColorStop(1, 'rgba(16, 4, 32, 0.82)');
-  ctx.fillStyle = scrim;
-  ctx.fillRect(0, bandY - h * 0.06, w, bandH + h * 0.06);
 
   const maxW = w * 0.92;
   let size = Math.min(w * 0.135, h * 0.115);
@@ -279,14 +380,34 @@ export function drawCaption(ctx, w, h, caption, tagline, grade) {
   }
   const lineH = size * 1.02;
   const totalH = lines.length * lineH;
+  const tagSize = Math.max(18, Math.min(w * 0.032, h * 0.028));
+  // Baselines: the last caption line sits just above the foot of the cover.
   let y = h - h * 0.055 - totalH + lineH * 0.82;
+  const tagY = y - totalH - tagSize * 0.15;
+  const textTop = tagline.trim() ? tagY - tagSize : y - totalH + lineH * 0.18 - size * 0.8;
+  const textBottom = y + size * 0.25;
+
+  if (style === 'block') {
+    // A solid deep band that hugs the text block, not the whole foot.
+    ctx.fillStyle = 'rgba(16, 4, 32, 0.88)';
+    ctx.fillRect(0, textTop - size * 0.12, w, textBottom - textTop + size * 0.37);
+    ctx.fillStyle = grade.glow;
+    ctx.fillRect(w * 0.04, textTop - size * 0.12, w * 0.92, Math.max(3, h * 0.006));
+  } else {
+    const scrim = ctx.createLinearGradient(0, textTop - h * 0.06, 0, h);
+    scrim.addColorStop(0, 'rgba(16, 4, 32, 0)');
+    scrim.addColorStop(0.45, 'rgba(16, 4, 32, 0.55)');
+    scrim.addColorStop(1, 'rgba(16, 4, 32, 0.82)');
+    ctx.fillStyle = scrim;
+    ctx.fillRect(0, textTop - h * 0.06, w, h - textTop + h * 0.06);
+  }
+
   if (tagline.trim()) {
-    const tagSize = Math.max(18, Math.min(w * 0.032, h * 0.028));
     ctx.font = `700 ${tagSize}px "Vice Display", "Arial Narrow", sans-serif`;
     try { ctx.letterSpacing = `${tagSize * 0.42}px`; } catch { /* older canvas */ }
     ctx.textAlign = 'center';
     ctx.fillStyle = grade.captionBottom;
-    ctx.fillText(tagline.trim().toUpperCase(), w / 2, y - totalH - tagSize * 0.4);
+    ctx.fillText(tagline.trim().toUpperCase(), w / 2, tagY);
     try { ctx.letterSpacing = '0px'; } catch { /* older canvas */ }
   }
   const fill = ctx.createLinearGradient(0, y - size, 0, y + size * 0.2);
@@ -298,8 +419,21 @@ export function drawCaption(ctx, w, h, caption, tagline, grade) {
   ctx.lineJoin = 'round';
   ctx.strokeStyle = grade.deep;
   ctx.lineWidth = size * 0.16;
+  if (style === 'outline') {
+    // Hollow letters: a thick glow-coloured stroke, no fill.
+    ctx.strokeStyle = grade.captionTop;
+    ctx.lineWidth = size * 0.07;
+    ctx.shadowColor = grade.glow;
+    ctx.shadowBlur = size * 0.22;
+    for (const line of lines) {
+      ctx.strokeText(line, w / 2, y);
+      y += lineH;
+    }
+    ctx.shadowBlur = 0;
+    return;
+  }
   ctx.shadowColor = grade.glow;
-  ctx.shadowBlur = size * 0.28;
+  ctx.shadowBlur = size * (style === 'block' ? 0.1 : 0.28);
   for (const line of lines) {
     ctx.strokeText(line, w / 2, y);
     ctx.fillStyle = fill;
@@ -314,6 +448,7 @@ export function renderCover(canvas, state) {
   const ctx = canvas.getContext('2d');
   const { width: w, height: h } = canvas;
   const grade = GRADES[state.grade] ?? GRADES.sunset;
+  const style = CAPTION_STYLES[state.style] ? state.style : 'neon';
   ctx.fillStyle = grade.deep;
   ctx.fillRect(0, 0, w, h);
   const gutter = Math.max(4, Math.round(Math.min(w, h) * 0.008));
@@ -328,11 +463,21 @@ export function renderCover(canvas, state) {
     if (photo) drawPhotoPanel(ctx, inset, photo, rect.panel, grade);
     else drawArtPanel(ctx, inset, grade, i + 2);
   }
-  drawCaption(ctx, w, h, state.caption, state.tagline, grade);
-  // Thin inner frame, the poster's edge.
+  drawCaption(ctx, w, h, state.caption, state.tagline, grade, style);
+  // A soft vignette pulls the eye to the middle of the poster.
+  const vig = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.42, w / 2, h / 2, Math.max(w, h) * 0.75);
+  vig.addColorStop(0, 'rgba(10, 2, 24, 0)');
+  vig.addColorStop(1, 'rgba(10, 2, 24, 0.28)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, w, h);
+  // A double frame: bright outer edge, dark inner line.
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.lineWidth = Math.max(2, Math.round(Math.min(w, h) * 0.004));
   ctx.strokeRect(ctx.lineWidth, ctx.lineWidth, w - ctx.lineWidth * 2, h - ctx.lineWidth * 2);
+  ctx.strokeStyle = 'rgba(16, 4, 32, 0.5)';
+  ctx.lineWidth = Math.max(1, Math.round(Math.min(w, h) * 0.0015));
+  const inner = Math.max(4, Math.round(Math.min(w, h) * 0.008));
+  ctx.strokeRect(inner, inner, w - inner * 2, h - inner * 2);
 }
 
 /** Builds a fresh canvas with the cover rendered at exactly w x h pixels. */

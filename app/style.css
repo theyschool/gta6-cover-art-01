@@ -29,12 +29,14 @@ input[type=text], select {
 input[type=file] { font: inherit; font-size: 13px; color: #cbb8e8; }
 input[type=range] { width: 100%; accent-color: #ff2e88; }
 button {
-  font: inherit; font-weight: 700; padding: 10px 12px; border: 0; border-radius: 8px;
+  font: inherit; font-weight: 700; padding: 10px 12px; border-radius: 8px;
   background: #2a1650; color: #fff; border: 1px solid #6b4a9e; cursor: pointer;
 }
 button:hover { border-color: #ff2e88; }
 button.primary { background: linear-gradient(90deg, #ff2e88, #ff7a3d); border: 0; font-size: 17px; padding: 12px; }
 button.mini { padding: 6px 9px; font-size: 13px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row .mini { flex: 1; }
 .layouts, .sizes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 .sizes { flex-direction: row; flex-wrap: wrap; }
 .layout-btn, .size-btn { text-align: left; }
@@ -44,11 +46,12 @@ button.mini { padding: 6px 9px; font-size: 13px; }
 .file-name { grid-column: 1 / -1; color: #a98fc9; font-size: 12px; }
 #status { margin: 8px 0 0; color: #8ef6ff; min-height: 1.2em; }
 .preview { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; position: sticky; top: 24px; }
-#cover { max-width: 100%; max-height: calc(100vh - 48px); box-shadow: 0 12px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.15); }
+#cover { max-width: 100%; max-height: calc(100vh - 48px); box-shadow: 0 12px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.15); cursor: grab; touch-action: none; }
+#cover:active { cursor: grabbing; }
 body.shot-cover .controls { display: none; }
 body.shot-cover .app { padding: 0; }
 body.shot-cover .preview { position: static; }
-body.shot-cover #cover { width: 100vw; height: 100vh; max-width: none; max-height: none; box-shadow: none; object-fit: fill; }
+body.shot-cover #cover { width: 100vw; height: 100vh; max-width: none; max-height: none; box-shadow: none; object-fit: fill; cursor: default; }
 @media (max-width: 900px) {
   .app { flex-direction: column; align-items: stretch; }
   .controls { width: auto; }

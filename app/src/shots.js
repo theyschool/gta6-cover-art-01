@@ -1,9 +1,9 @@
 // Fixed scenes for screenshots: ?shot=editor shows the page with sample photos
 // loaded; ?shot=cover shows the cover alone at the size the query names.
 // `photos` picks samples (samples/<name>.jpg) for slots 1-3, `panels` assigns
-// photo indexes to panels, `layout` / `grade` / `caption` / `tagline` set the
-// look, `size` (WxH) sets the cover shot's pixels. window.__shotReady is set
-// once painted, after the display font has loaded.
+// photo indexes to panels, `layout` / `grade` / `style` / `caption` / `tagline`
+// set the look, `size` (WxH) sets the cover shot's pixels. window.__shotReady
+// is set once painted, after the display font has loaded.
 import { renderCover } from './cover.js';
 
 function parseSize(value, fallback) {
@@ -31,12 +31,15 @@ export async function runShot(shot, query, state, loadImage, redraw) {
   }
   if (query.get('layout')) state.layout = query.get('layout');
   if (query.get('grade')) state.grade = query.get('grade');
+  if (query.get('style')) state.style = query.get('style');
   if (query.get('caption') !== null) state.caption = query.get('caption');
   if (query.get('tagline') !== null) state.tagline = query.get('tagline');
   const captionInput = document.getElementById('caption');
   const taglineInput = document.getElementById('tagline');
+  const styleSelect = document.getElementById('caption-style');
   if (captionInput) captionInput.value = state.caption;
   if (taglineInput) taglineInput.value = state.tagline;
+  if (styleSelect) styleSelect.value = state.style;
   const name1 = document.getElementById('photo-1-name');
   const name2 = document.getElementById('photo-2-name');
   if (name1 && photos[0]) name1.textContent = `Sample: ${photos[0]}.jpg`;

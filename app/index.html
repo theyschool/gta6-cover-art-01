@@ -39,6 +39,7 @@
       <label>Colour grade
         <select id="grade"></select>
       </label>
+      <button id="shuffle" type="button" class="mini">Shuffle the look</button>
       <label>Panel
         <select id="panel"></select>
       </label>
@@ -60,13 +61,20 @@
         <input id="pan-y" type="range" min="-1" max="1" step="0.05" value="0">
       </label>
       <p id="panel-note" class="hint"></p>
-      <button id="fill-all" type="button" class="mini">Fill every panel with one photo</button>
+      <div class="row">
+        <button id="fill-all" type="button" class="mini">Fill every panel with one photo</button>
+        <button id="reset-framing" type="button" class="mini">Reset framing</button>
+      </div>
+      <p class="hint">Tip: drag a photo on the preview to move it, click a panel to pick it, arrow keys nudge it.</p>
     </fieldset>
 
     <fieldset>
       <legend>3 · Words</legend>
       <label>Caption <input id="caption" type="text" maxlength="40" value="Sunset Heist"></label>
       <label>Tagline <input id="tagline" type="text" maxlength="24" value="Vice City"></label>
+      <label>Caption style
+        <select id="caption-style"></select>
+      </label>
     </fieldset>
 
     <fieldset>
